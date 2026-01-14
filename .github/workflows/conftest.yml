@@ -23,6 +23,9 @@ jobs:
           tar -xzf conftest.tar.gz conftest
           sudo mv conftest /usr/local/bin/conftest
           conftest --version
+      
+      - name: Print conftest version
+        run: conftest --version
 
       - name: Non-compliant S3 should fail (expected)
         continue-on-error: true
