@@ -39,11 +39,14 @@ is_public_acl(v) {
   v == "public-read-write"
 }
 
+# Handle both data shapes for aws_s3_bucket_public_access_block:
+# - Some parsers produce pab as an object: input.resource...["name"]
+# - Others produce a list:              input.resource...["name"][_]
 has_public_access_block(bucket_name) {
   some pab_name
-  pab := input.resource.aws_s3_bucket_public_access_block[pab_name][_]
+  pab := input.resource.aws_s3_bucket_public_access_block[pab_name]
 
-  bucket_ref_matches(pab.bucket, bucket_name)
+  bucket_ref_matches_any(pab.bucket, bucket_name)
 
   pab.block_public_acls == true
   pab.ignore_public_acls == true
@@ -51,8 +54,31 @@ has_public_access_block(bucket_name) {
   pab.restrict_public_buckets == true
 }
 
+has_public_access_block(bucket_name) {
+  some pab_name
+  pab := input.resource.aws_s3_bucket_public_access_block[pab_name][_]
+
+  bucket_ref_matches_any(pab.bucket, bucket_name)
+
+  pab.block_public_acls == true
+  pab.ignore_public_acls == true
+  pab.block_public_policy == true
+  pab.restrict_public_buckets == true
+}
+
+# Accept either a string ref or a list of refs
+bucket_ref_matches_any(ref, bucket_name) {
+  bucket_ref_matches_string(ref, bucket_name)
+}
+
+bucket_ref_matches_any(ref, bucket_name) {
+  some i
+  ref[i]
+  bucket_ref_matches_string(ref[i], bucket_name)
+}
+
 # Accept both interpolation-style and reference-style bucket bindings
-bucket_ref_matches(ref, bucket_name) {
+bucket_ref_matches_string(ref, bucket_name) {
   ref == sprintf("${aws_s3_bucket.%s.id}", [bucket_name])
 } else {
   ref == sprintf("${aws_s3_bucket.%s.arn}", [bucket_name])
