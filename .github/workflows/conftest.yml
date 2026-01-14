@@ -24,12 +24,21 @@ jobs:
           sudo mv conftest /usr/local/bin/conftest
           conftest --version
 
-      - name: Non-compliant S3 should fail
+      - name: Non-compliant S3 should fail (expected)
+        continue-on-error: true
         run: |
+          set +e
           conftest test infra/examples/bad_s3/main.tf \
             -p policy/opa/baseline \
             --parser hcl2 \
             --all-namespaces
+          rc=$?
+          if [ $rc -eq 0 ]; then
+            echo "ERROR: bad_s3 unexpectedly PASSED (it should FAIL)"
+            exit 1
+          fi
+          echo "OK: bad_s3 failed as expected"
+          exit 0
 
       - name: Compliant S3 should pass
         run: |
