@@ -1,0 +1,39 @@
+name: Conftest OPA Guardrails
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  conftest:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install conftest
+        run: |
+          set -e
+          CONFTEST_VERSION="0.53.0"
+          curl -L -o conftest.tar.gz \
+            https://github.com/open-policy-agent/conftest/releases/download/v${CONFTEST_VERSION}/conftest_${CONFTEST_VERSION}_Linux_x86_64.tar.gz
+          tar -xzf conftest.tar.gz conftest
+          sudo mv conftest /usr/local/bin/conftest
+          conftest --version
+
+      - name: Non-compliant S3 should fail
+        run: |
+          conftest test infra/examples/bad_s3/main.tf \
+            -p policy/opa/baseline \
+            --parser hcl2 \
+            --all-namespaces
+
+      - name: Compliant S3 should pass
+        run: |
+          conftest test infra/examples/good_s3/main.tf \
+            -p policy/opa/baseline \
+            --parser hcl2 \
+            --all-namespaces
